@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows.Forms;
 
 namespace MLSSRandomizerForm
 {
     public partial class Form1 : Form
     {
+        public int gameId;
         readonly string progVersion; // ProductVersion on AssemblyInfo.cs, [AssemblyInformationalVersion(...)]
         string filePath;
         string seed;
@@ -45,15 +48,39 @@ namespace MLSSRandomizerForm
         public static bool background = false;
         public static bool scale = false;
         public static bool minecart = false;
+        public static bool trueChaos = false;
+        public static bool spangle = true;
+        public static bool minigame = false;
         public static int seedType = 1;
         public static string mColor = "Red";
         public static string lColor = "Green";
+        public static string mPants = "Vanilla";
+        public static string lPants = "Vanilla";
+        public static int r = 0;
+        public static int g = 0;
+        public static int b = 0;
+
+        //BiS Variables
+        public readonly string bisHash = "05072F0545BF4492D81FDFF6B595B9D20C816007";
+        public static bool bItems = true;
+
+        
 
         public Form1()
         {
             InitializeComponent();
             progVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion;
             Text += " " + progVersion; // show version in title
+        }
+
+        public string ComputeHash()
+        {
+            StreamReader sr = File.OpenText(filePath);
+            string file = sr.ReadToEnd();
+            byte[] temp = Encoding.Default.GetBytes(file);
+            temp = new SHA1CryptoServiceProvider().ComputeHash(temp);
+            return BitConverter.ToString(temp).Replace("-", "");
+            
         }
 
         private void SelectRomButton_Click(object sender, EventArgs e)
@@ -71,24 +98,44 @@ namespace MLSSRandomizerForm
         {
             try
             {
-                (string newFile, int hash) = Randomize.Random(filePath, seed);
+                Console.WriteLine(ComputeHash());
+                (string newFile, int hash) = Randomize.Random(filePath, seed, gameId);
                 // Hexadecimal ConfigHash is constant regardless of seed, and helps to identify equal settings.
                 var list = new List<string>();
                 Rom.ConfigInfo(list);
                 uint configHash = (uint)string.Join("\n", list).GetHashCode();
                 // Identical ROMs generated on same progVersion will have the same (seed, configHash) tuple
                 // Default file name when saving contains this info for convenience
-                saveFileDialog1.FileName = $"MLSSRandomizer-{progVersion} Seed={hash} ConfigHash={configHash:X}.gba";
-                saveFileDialog1.ShowDialog();
-                if (File.Exists(saveFileDialog1.FileName))
-                    File.Delete(saveFileDialog1.FileName);
-                if (saveFileDialog1.FileName != "")
+                if (gameId == 1)
                 {
-                    File.Copy(newFile, saveFileDialog1.FileName);
-                    File.Delete(newFile);
-                    Console.WriteLine("Seed: " + hash);
-                    if (MessageBox.Show("Do you want to copy your seed?", "Done", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                        Clipboard.SetText(Convert.ToString(hash), TextDataFormat.Text);
+                    saveFileDialog1.FileName = $"MLSSRandomizer-{progVersion} Seed={hash} ConfigHash={configHash:X}.gba";
+                    saveFileDialog1.ShowDialog();
+                    if (File.Exists(saveFileDialog1.FileName))
+                        File.Delete(saveFileDialog1.FileName);
+                    if (saveFileDialog1.FileName != "")
+                    {
+                        File.Copy(newFile, saveFileDialog1.FileName);
+                        File.Delete(newFile);
+                        Console.WriteLine("Seed: " + hash);
+                        if (MessageBox.Show("Do you want to copy your seed?", "Done", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                            Clipboard.SetText(Convert.ToString(hash), TextDataFormat.Text);
+                    }
+                }
+                else if (gameId == 3)
+                {
+                    saveFileDialog2.FileName = $"BISRandomizer-{progVersion} Seed={hash} ConfigHash={configHash:X}.nds";
+                    saveFileDialog2.ShowDialog();
+
+                    if (File.Exists(saveFileDialog2.FileName))
+                        File.Delete(saveFileDialog2.FileName);
+                    if (saveFileDialog2.FileName != "")
+                    {
+                        File.Copy(newFile, saveFileDialog2.FileName);
+                        File.Delete(newFile);
+                        Console.WriteLine("Seed: " + hash);
+                        if (MessageBox.Show("Do you want to copy your seed?", "Done", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                            Clipboard.SetText(Convert.ToString(hash), TextDataFormat.Text);
+                    }
                 }
             }
             catch (Exception err)
@@ -108,6 +155,18 @@ namespace MLSSRandomizerForm
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             filePath = textBox1.Text;
+            //string hash = ComputeHash();
+            if (filePath.Contains(".nds"))
+            {
+                tabControl2.Visible = true;
+                gameId = 3;
+            }
+            else if(filePath.Contains(".gba"))
+            {
+                gameId = 1;
+                Colors.Visible = true;
+                tabControl2.Visible = false;
+            }
         }
 
         private void SeedTextbox_TextChanged(object sender, EventArgs e)
@@ -323,11 +382,19 @@ namespace MLSSRandomizerForm
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             mColor = comboBox1.Text;
+            if (mColor == "Chaos" || lColor == "Chaos")
+                checkBox33.Enabled = true;
+            else
+                checkBox33.Enabled = false;
         }
 
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
             lColor = comboBox2.Text;
+            if (mColor == "Chaos" || lColor == "Chaos")
+                checkBox33.Enabled = true;
+            else
+                checkBox33.Enabled = false;
         }
 
         private void label4_Click(object sender, EventArgs e)
@@ -363,6 +430,116 @@ namespace MLSSRandomizerForm
         private void checkBox32_CheckedChanged(object sender, EventArgs e)
         {
             minecart = checkBox32.Checked;
+        }
+
+        private void checkBox33_CheckedChanged(object sender, EventArgs e)
+        {
+            trueChaos = checkBox33.Checked;
+        }
+
+        private void checkBox34_CheckedChanged(object sender, EventArgs e)
+        {
+            spangle = checkBox34.Checked;
+        }
+
+        private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mPants = comboBox3.Text;
+        }
+
+        private void comboBox4_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            lPants = comboBox4.Text;
+        }
+
+        private void checkBox35_CheckedChanged(object sender, EventArgs e)
+        {
+            bItems = checkBox35.Checked;
+        }
+
+        private void saveFileDialog2_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+
+        }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void label8_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label9_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void checkBox36_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void numericUpDown3_ValueChanged(object sender, EventArgs e)
+        {
+            r = (int)numericUpDown3.Value;
+            panel1.BackColor = System.Drawing.Color.FromArgb(r, g, b);
+        }
+
+        private void numericUpDown1_ValueChanged_1(object sender, EventArgs e)
+        {
+            g = (int)numericUpDown1.Value;
+            panel1.BackColor = System.Drawing.Color.FromArgb(r, g, b);
+        }
+
+        private void numericUpDown4_ValueChanged(object sender, EventArgs e)
+        {
+            b = (int)numericUpDown4.Value;
+            panel1.BackColor = System.Drawing.Color.FromArgb(r, g, b);
+        }
+
+        private void label10_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        //Mario Colors
+        private void button3_Click(object sender, EventArgs e)
+        {
+            mColor = Convert.ToString(r, 16) + ',' + Convert.ToString(g, 16) + ',' + Convert.ToString(b, 16);
+            comboBox1.Items[12] = mColor;
+            comboBox1.SelectedIndex = 12;
+        }
+
+        //Mario Trousers
+        private void button1_Click(object sender, EventArgs e)
+        {
+            mPants = Convert.ToString(r, 16) + ',' + Convert.ToString(g, 16) + ',' + Convert.ToString(b, 16);
+            comboBox3.Items[13] = mPants;
+            comboBox3.SelectedIndex = 13;
+        }
+
+        //Luigi Colors
+        private void button4_Click(object sender, EventArgs e)
+        {
+            lColor = Convert.ToString(r, 16) + ',' + Convert.ToString(g, 16) + ',' + Convert.ToString(b, 16);
+            comboBox2.Items[12] = lColor;
+            comboBox2.SelectedIndex = 12;
+        }
+
+        //Luigi Trousers
+        private void button5_Click(object sender, EventArgs e)
+        {
+            lPants = Convert.ToString(r, 16) + ',' + Convert.ToString(g, 16) + ',' + Convert.ToString(b, 16);
+            comboBox4.Items[13] = lPants;
+            comboBox4.SelectedIndex = 13;
+        }
+
+        private void checkBox36_CheckedChanged_1(object sender, EventArgs e)
+        {
+            minigame = checkBox36.Checked;
         }
     }
 }

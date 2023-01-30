@@ -358,13 +358,31 @@
     .org SCROLL_FIX1
         db 0x16
 
+    .org MEMBERSHIP_FIX
+        db 0x16
+
+    .org BROS_ROCK_FIX
+        db 0x16
+
     .org SCROLL_FIX2
         db 0x16
 
     .org BEANLET_FIX
         db 0x16
 
+    .org CASTLE_DOOR_FIX
+        db 0xB
+
     .org FLAG_FIX 
+        mov r0, r0
+
+    .org FSHOP_FIX
+        mov r0, r0
+
+    .org FBSHOP_FIX
+        mov r0, r0
+
+    .org FPSHOP_FIX
         mov r0, r0
 
     .org ULTRA_MUSHROOM_TEXT
@@ -602,15 +620,14 @@
 
 
     .org CALC_HEALTH
-    push { r1, r2, lr }
+    push { r1, lr }
     ldr r1, =0x030024B8
     ldrb r1, [r1]
     sub r1, #0x7
-    mov r2, #0x2
-    mul r2, r1
-    add r2, #0xA
+    lsl r1, #0x1
+    add r1, #0xA
     mov r0, r1
-    pop { r1, r2, pc }
+    pop { r1, pc }
     .pool
 
 
@@ -638,7 +655,11 @@
     .yd_next:
     ldr r2, =0x1CE
     cmp r0, r2
-    bne .yd_end
+    beq .yd_search
+    bl MINIGAME_SPOILER
+    cmp r2, #0x0
+    beq .yd_end
+    bl .yd_item
     .yd_search:
     cmp r1, #0x3
     ble .yd_end
@@ -654,6 +675,7 @@
     lsl r1, #0x1C
     lsr r1, #0x18
     add r2, r3, r1
+    .yd_item:
     cmp r2, #0x30
     bge .yd_key
     cmp r2, #0x2B
@@ -721,6 +743,78 @@
     mov r3, #0xD4
     lsl r3, #0x2
     pop { r0-r2, lr }
+    .pool
+
+
+
+
+    .org MINIGAME_SPOILER
+    push lr
+    ldr r2, =MINIGAME_ENABLE
+    ldrb r2, [r2]
+    cmp r2, #0x0
+    beq .minigame_skip
+    ldr r2, =0x1D1
+    cmp r0, r2
+    beq .scroll
+    add r2, #0x1
+    cmp r0, r2
+    beq .scroll
+    ldr r2, =0x137
+    cmp r0, r2
+    beq .membership
+    ldr r2, =0x181
+    cmp r0, r2
+    beq .winkle
+    ldr r2, =0x176
+    cmp r0, r2
+    beq .surf
+    bl .minigame_skip
+    .scroll:
+    cmp r1, #0x2
+    bne .minigame_skip
+    ldr r1, =0x1D1
+    sub r2, r1
+    ldr r0, =0x081E9411
+    ldrb r2, [r0, r2]
+    bl .minigame_end
+    .membership:
+    cmp r1, #0x2
+    bne .minigame_skip
+    ldr r0, =0x08260637
+    ldrb r2, [r0]
+    lsl r2, #0x1C
+    lsr r2, #0x18
+    ldrb r3, [r0, #0x1]
+    lsr r3, #0x4
+    add r2, r3
+    bl .minigame_end
+    .winkle:
+    cmp r1, #0x6
+    bne .minigame_skip
+    ldr r0, =0x08261658
+    ldrb r2, [r0]
+    lsl r2, #0x1C
+    lsr r2, #0x18
+    ldrb r3, [r0, #0x1]
+    lsr r3, #0x4
+    add r2, r3
+    bl .minigame_end
+    .surf:
+    cmp r1, #0x2
+    bne .minigame_skip
+    ldr r0, =0x082753EA
+    ldrb r2, [r0]
+    lsl r2, #0x1C
+    lsr r2, #0x18
+    ldrb r3, [r0, #0x1]
+    lsr r3, #0x4
+    add r2, r3
+    bl .minigame_end
+    .minigame_skip:
+    mov r2, #0x0
+    .minigame_end:
+    pop pc
     .pool
 
 
@@ -811,17 +905,19 @@
 
 
     .org PRICE_CALC
-    push { r2, lr }
+    push { r2, r3, lr }
     cmp r1, #0x30
     bge .price_key
     ldr r2, =PRICE_RAM
-    ldrb r2, [r2]
-    cmp r2, #0x1
+    ldrb r3, [r2]
+    cmp r3, #0x1
     bne .price_skip
     cmp r1, #0x2B
     bge .price_skip
     sub r1, #0xA
     .price_skip:
+    mov r3, #0x0
+    strb r3, [r2]
     cmp r1, #0x2b
     bge .price_bean
     ldr r2, =PRICE_ARRAY
@@ -842,7 +938,7 @@
     ldr r2, =BADGE_PRICE_ARRAY
     ldrh r1, [r2, r1]
     .price_end:
-    pop { r2, pc }
+    pop { r2, r3, pc }
     .pool
 
 
@@ -1915,20 +2011,7 @@
     beq .hammer_tut_block
     cmp r1, #0x2
     beq .chuckle_block
-    cmp r1, #0xBD
-    beq .fawful_castle
     b .unblock
-
-    .fawful_castle:
-    ldr r1, =0x082FCCBD
-    cmp r1, r2
-    bne .unblock
-    ldr r1, =CASTLE_DISABLE
-    ldrb r1, [r1]
-    cmp r1, #0x1
-    bne .unblock
-    mov r0, #0x0
-    bl .end
 
     .chuckle_block:
     ldr r0, =0x082FBEC2
@@ -2136,6 +2219,9 @@
     .ability_end:
     pop { r0, r1 }
     .ability_end2:
+    ldr r2, =BEAN_RAM
+    mov r3, #0x0
+    strb r3, [r2]
     pop { r2, r3, r4, pc }
     .pool
 
@@ -4070,6 +4156,9 @@
 
     .org KOOPA_BLOCK_SUBR
     push { r0, r1, r2, lr }
+    ldr r0, =YOSHI_DISPLAY_RAM
+    mov r1, #0x0
+    strb r1, [r0]
     ldr r0, =CORAL_RAM
     ldrb r1, [r0]
     cmp r1, #0x1
