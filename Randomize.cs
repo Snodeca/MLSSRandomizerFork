@@ -41,10 +41,12 @@ namespace MLSSRandomizerForm
                 rom.EnemyRandomize();
                 rom.RandomizeStats();
                 rom.MusicRandomize();
-                rom.ColorSwap(Rom.GenColor(Form1.mColor), 0, "");
-                rom.ColorSwap(Rom.GenColor(Form1.lColor), 1, "");
-                rom.ColorSwap(Rom.GenColor(Form1.mPants), 0, "pants/");
-                rom.ColorSwap(Rom.GenColor(Form1.lPants), 1, "pants/");
+                Form1.mColor = Rom.GenColor(Form1.mColor, false);
+                Form1.lColor = Rom.GenColor(Form1.lColor, false);
+                rom.ColorSwap(Form1.mColor, 0, "");
+                rom.ColorSwap(Form1.lColor, 1, "");
+                rom.ColorSwap(Rom.GenColor(Form1.mPants, true), 0, "pants/");
+                rom.ColorSwap(Rom.GenColor(Form1.lPants, true), 1, "pants/");
                 rom.stream.Close();
                 rom.Inject();
                 return (Environment.CurrentDirectory + "/asm/mlss_loop.gba", rom.hash);
@@ -533,6 +535,7 @@ namespace MLSSRandomizerForm
         {
             if (gameId == 1)
             {
+                list.Add("Seed Type: " + Form1.seedType);
                 list.Add("Chuckle: " + Form1.chuckle);
                 list.Add("Rose: " + Form1.rose);
                 list.Add("Brooch: " + Form1.brooch);
@@ -546,6 +549,7 @@ namespace MLSSRandomizerForm
                 list.Add("Neon Eggs: " + Form1.eggs);
                 list.Add("Beanstones: " + Form1.beanstone);
                 list.Add("Beanlets: " + Form1.beanlet);
+                list.Add("Spangle: " + Form1.spangle);
                 list.Add("Hammers: " + Form1.hammers);
                 list.Add("Hammer Moves: " + Form1.goblets);
                 list.Add("Hands: " + Form1.hands);
@@ -557,17 +561,14 @@ namespace MLSSRandomizerForm
                 list.Add("BP Costs: " + Form1.brosBp);
                 list.Add("Item Heal: " + Form1.itemHeal);
                 list.Add("Espresso Stats: " + Form1.coffeeValue);
-                list.Add("Music: " + Form1.music);
                 list.Add("Enemies: " + Form1.enemy);
                 list.Add("Enemy Stats: " + Form1.scale);
-                list.Add("Battle Backgrounds: " + Form1.background);
                 list.Add("Disable Mush: " + Form1.mush);
                 list.Add("Disable Surf: " + Form1.surf);
                 list.Add("Skip Minecart: " + Form1.minecart);
                 list.Add("Skip Bowsers: " + Form1.castle);
                 list.Add("Skip intro: " + Form1.intro);
-                list.Add("Mario Color: " + Form1.mColor);
-                list.Add("Luigi Color: " + Form1.lColor);
+                list.Add("Minigame Spoilers: " + Form1.minigame);
                 list.Add(" ");
             }
         }
@@ -984,7 +985,7 @@ namespace MLSSRandomizerForm
 
         public void ColorSwap(string color, int bro, string pants)
         {
-            if (pants != "" && color == "Vanilla")
+            if (pants != "" && (color == "Vanilla" || (bro == 0 && (Form1.mColor == "TrueChaos" || Form1.mColor == "Silhouette")) || (bro == 1 && (Form1.lColor == "TrueChaos" || Form1.lColor == "Silhouette"))))
                 return;
             string tempcolor;
             string[] temp;
@@ -998,7 +999,7 @@ namespace MLSSRandomizerForm
             else 
             {
                 palette = new Palette();
-                tempcolor = GenColor(color);
+                tempcolor = color;
                 temp = StreamInitialize(Environment.CurrentDirectory + "/colors/" + pants + tempcolor + ".txt");
             }
             List<Color> colors = new List<Color>();
@@ -1006,7 +1007,7 @@ namespace MLSSRandomizerForm
             {
                 for (int i = 0; i < temp.Length; i += 2)
                 {
-                    colors.Add(new Color(Convert.ToUInt32(temp[i], 16), (byte)random.Next(0x0, 0x7F), (byte)random.Next(0x0, 0xFF), Convert.ToInt32(temp[i + 1], 16)));
+                    colors.Add(new Color(Convert.ToUInt32(temp[i], 16), (byte)random.Next(0x0, 0xFF), (byte)random.Next(0x0, 0x7F), Convert.ToInt32(temp[i + 1], 16)));
                 }
             }
             else if(tempcolor == "Custom")
@@ -1034,20 +1035,19 @@ namespace MLSSRandomizerForm
             }
         }
 
-        public static string GenColor(string color)
+        public static string GenColor(string color, bool pants)
         {
-            string[] colors = new string[] { "Red", "Green", "Purple", "Yellow", "Black", "Pink", "Cyan", "Blue", "Orange", "White", "Chaos" };
+            string[] colors = new string[] { "Red", "Green", "Purple", "Yellow", "Black", "Pink", "Cyan", "Blue", "Orange", "White", "Chaos", "TrueChaos", "Silhouette"};
+            string[] pColors = new string[] { "Red", "Green", "Purple", "Yellow", "Black", "Pink", "Cyan", "Blue", "Orange", "White", "Chaos" };
             string temp = color;
             switch (temp)
             {
 
                 case "Random":
-                    temp = colors[random.Next(0, colors.Length - 1)];
-                    return temp;
-
-                case "Chaos":
-                    if (Form1.trueChaos)
-                        return "TrueChaos";
+                    if(!pants)
+                        temp = colors[random.Next(0, colors.Length - 1)];
+                    else
+                        temp = pColors[random.Next(0, pColors.Length - 1)];
                     return temp;
 
                 default:
@@ -1487,7 +1487,7 @@ namespace MLSSRandomizerForm
             }
         }
 
-        public string[] StreamInitialize(string path)
+        public static string[] StreamInitialize(string path)
         {
             var str = new StreamReader(path).ReadToEnd();
             string[] lines = str.Split(new char[] { ',' });
@@ -1561,7 +1561,7 @@ namespace MLSSRandomizerForm
                 }
                 if(Form1.minigame)
                 {
-                    stream.Seek(0x1E940F, SeekOrigin.Begin);
+                    stream.Seek(0x1E1EEF, SeekOrigin.Begin);
                     stream.WriteByte(0x1);
                 }
             }
